@@ -2,22 +2,20 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const morgan = require('morgan');
-const NodeCache = require('node-cache'); // Import node-cache
+const NodeCache = require('node-cache'); 
 
 const app = express();
 const port = 3000;
 const videoHistory = [];
-const cache = new NodeCache({ stdTTL: 3600 }); // Cache com tempo de vida padrão de 1 hora
+const cache = new NodeCache({ stdTTL: 3600 }); 
 
-// Assuming a bitrate of 128 kbps (16 KB/s)
-const BITRATE = 128 * 1024 / 8; // bytes per second
-const CHUNK_DURATION = 30; // seconds
-const CHUNK_SIZE = BITRATE * CHUNK_DURATION; // bytes per chunk
+const BITRATE = 128 * 1024 / 8; 
+const CHUNK_DURATION = 30;
+const CHUNK_SIZE = BITRATE * CHUNK_DURATION; 
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// Use morgan to log HTTP requests
 app.use(morgan('combined'));
 
 app.get('/videos', (req, res) => {
@@ -35,7 +33,6 @@ app.get('/video/:name', (req, res) => {
   const videoName = req.params.name;
   const filePath = path.resolve(__dirname, 'videos', videoName);
 
-  // Verifica se o vídeo está em cache
   const cachedVideo = cache.get(videoName);
   if (cachedVideo) {
     console.log('Serving from cache');
@@ -48,7 +45,6 @@ app.get('/video/:name', (req, res) => {
       return res.status(404).send('Video not found');
     }
 
-    // Armazena o vídeo no cache
     cache.set(videoName, filePath);
     sendVideoStream(filePath, req, res, stat);
   });
@@ -72,7 +68,6 @@ function sendVideoStream(filePath, req, res, stat) {
       'Content-Type': 'video/mp4',
     };
 
-    // Calculate the duration of the chunk in seconds
     const chunkDuration = (chunksize / BITRATE).toFixed(2);
 
     console.log(`Serving video chunk: ${filePath}, range: ${start}-${end}, duration: ${chunkDuration} seconds`);
