@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Player</title>
+  <style>
+    #history {
+      margin-top: 20px;
+    }
+    #history ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    #history li {
+      margin-bottom: 5px;
+    }
+    #videoList {
+      margin-top: 20px;
+    }
+    #videoList ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    #videoList li {
+      margin-bottom: 5px;
+      cursor: pointer;
+      color: blue;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>Video Player</h1>
+  <div>
+    <input type="text" id="searchInput" placeholder="Search videos..." oninput="filterVideos()">
+  </div>
+  <div id="videoList">
+    <h2>Available Videos</h2>
+    <ul id="videoListUl"></ul>
+  </div>
+
+  <video id="videoPlayer" width="640" height="360" controls>
+    <source id="videoSource" src="" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+
+  <div id="history">
+    <h2>History</h2>
+    <ul id="historyList"></ul>
+  </div>
+
+  <script>
+    const videoPlayer = document.getElementById('videoPlayer');
+    const videoSource = document.getElementById('videoSource');
+    let allVideos = [];
+
+    function saveVideoState() {
+      const videoSrc = videoSource.src;
+      const videoName = videoSrc.split('/').pop();
+      const currentTime = videoPlayer.currentTime;
+      localStorage.setItem('videoState', JSON.stringify({ video: videoName, time: currentTime }));
+    }
+
+    function restoreVideoState() {
+      const savedState = localStorage.getItem('videoState');
+      if (savedState) {
+        const { video, time } = JSON.parse(savedState);
+        videoSource.src = `/video/${video}`;
+        videoPlayer.load();
+        videoPlayer.currentTime = time;
+        videoPlayer.play();
+      }
+    }
+
+    document.getElementById('videoPlayer').addEventListener('ended', () => {
+      const videoSrc = document.getElementById('videoSource').src;
+      const videoName = videoSrc.split('/').pop();
+      fetch('/history', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ video: videoName })
+      })
+      .then(response => response.text())
+      .then(data => {
+        console.log(data);
+        updateHistory();
+      })
+      .catch(error => console.error('Error:', error));
+    });
+
+    videoPlayer.addEventListener('pause', saveVideoState);
+    videoPlayer.addEventListener('seeking', saveVideoState);
+
+    function updateHistory() {
+      fetch('/history')
+        .then(response => response.json())
+        .then(data => {
+          const historyList = document.getElementById('historyList');
+          historyList.innerHTML = '';
+          data.forEach(video => {
+            const listItem = document.createElement('li');
+            listItem.textContent = video;
+            historyList.appendChild(listItem);
+          });
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function loadVideos() {
+      fetch('/videos')
+        .then(response => response.json())
+        .then(data => {
+          allVideos = data; // Save all videos for filtering
+          displayVideos(data);
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function displayVideos(videos) {
+      const videoList = document.getElementById('videoListUl');
+      videoList.innerHTML = '';
+      videos.forEach(video => {
+        const listItem = document.createElement('li');
+        listItem.textContent = video;
+        listItem.onclick = () => {
+          videoSource.src = `/video/${video}`;
+          videoPlayer.load();
+          videoPlayer.play();
+          localStorage.removeItem('videoState');
+        };
+        videoList.appendChild(listItem);
+      });
+    }
+
+    function filterVideos() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      const filteredVideos = allVideos.filter(video => video.toLowerCase().includes(searchTerm));
+      displayVideos(filteredVideos);
+    }
+
+    updateHistory();
+    loadVideos();
+    restoreVideoState(); // Restore video state on page load
+  </script>
+</body>
+</html>
