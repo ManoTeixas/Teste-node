@@ -113,7 +113,7 @@
       fetch('/videos')
         .then(response => response.json())
         .then(data => {
-          allVideos = data; // Save all videos for filtering
+          allVideos = data;
           displayVideos(data);
         })
         .catch(error => console.error('Error:', error));
